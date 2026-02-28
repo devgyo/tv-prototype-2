@@ -16,12 +16,48 @@ type EventPanelProps = {
   borderColor?: string;
   backgroundColor?: string;
   width?: number | 'fill';
+  toolbarBgColor?: string;
+  onToolbarBgColorChange?: (value: string) => void;
+  toolbarOpacity?: number;
+  toolbarBlur?: number;
+  onToolbarOpacityChange?: (value: number) => void;
+  onToolbarBlurChange?: (value: number) => void;
+  toolbarBorderBrightness?: number;
+  onToolbarBorderBrightnessChange?: (value: number) => void;
+  toolbarHighlight?: number;
+  onToolbarHighlightChange?: (value: number) => void;
+  toolbarHighlightHeight?: number;
+  onToolbarHighlightHeightChange?: (value: number) => void;
+  toolbarShadowStrength?: number;
+  onToolbarShadowStrengthChange?: (value: number) => void;
+  toolbarBorderWidth?: number;
+  onToolbarBorderWidthChange?: (value: number) => void;
+  toolbarBorderGradientContrast?: number;
+  onToolbarBorderGradientContrastChange?: (value: number) => void;
 };
 
 export function EventPanel({
   borderColor,
   backgroundColor,
   width = undefined,
+  toolbarBgColor,
+  onToolbarBgColorChange,
+  toolbarOpacity,
+  toolbarBlur,
+  onToolbarOpacityChange,
+  onToolbarBlurChange,
+  toolbarBorderBrightness,
+  onToolbarBorderBrightnessChange,
+  toolbarHighlight,
+  onToolbarHighlightChange,
+  toolbarHighlightHeight,
+  onToolbarHighlightHeightChange,
+  toolbarShadowStrength,
+  onToolbarShadowStrengthChange,
+  toolbarBorderWidth,
+  onToolbarBorderWidthChange,
+  toolbarBorderGradientContrast,
+  onToolbarBorderGradientContrastChange,
 }: EventPanelProps) {
   const panelStyle = getViewPanelStyle({
     borderColor: borderColor ?? WATCHLIST_BORDER,
@@ -44,15 +80,270 @@ export function EventPanel({
         Event
       </h2>
       <ReactLenis
-        className={`${VIEW_PANEL_SCROLL_CLASS} flex items-center justify-center`}
+        className={`${VIEW_PANEL_SCROLL_CLASS} flex flex-col gap-3`}
         options={VIEW_PANEL_LENIS_OPTIONS}
       >
-        <span
-          className="text-[13px] font-medium text-white/50"
-          style={{ fontFamily: VIEW_PANEL_TITLE_FONT }}
-        >
-          Event List
-        </span>
+        <div className="px-1 pt-1">
+          <span
+            className="text-[11px] font-semibold text-white/40"
+            style={{ fontFamily: VIEW_PANEL_TITLE_FONT }}
+          >
+            背景
+          </span>
+        </div>
+        {onToolbarBgColorChange ? (
+          <div className="flex items-center gap-2 px-1">
+            <span
+              className="shrink-0 text-[12px] text-white/60"
+              style={{ fontFamily: VIEW_PANEL_TITLE_FONT }}
+            >
+              Bar 背景颜色
+            </span>
+            <input
+              type="color"
+              value={toolbarBgColor ?? '#ffffff'}
+              onChange={(e) => onToolbarBgColorChange?.(e.target.value)}
+              className="h-7 w-10 cursor-pointer rounded border-0 bg-transparent p-0"
+            />
+          </div>
+        ) : null}
+        {onToolbarOpacityChange ? (
+          <div className="flex items-center gap-2 px-1">
+            <span
+              className="shrink-0 text-[12px] text-white/60"
+              style={{ fontFamily: VIEW_PANEL_TITLE_FONT }}
+            >
+              Bar 透明度
+            </span>
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.05}
+              value={toolbarOpacity ?? 0.9}
+              onChange={(e) => onToolbarOpacityChange?.(parseFloat(e.target.value))}
+              className="h-1 flex-1 cursor-pointer accent-[#F2F2F7]"
+            />
+          </div>
+        ) : null}
+        {onToolbarBlurChange ? (
+          <div className="flex items-center gap-2 px-1">
+            <span
+              className="shrink-0 text-[12px] text-white/60"
+              style={{ fontFamily: VIEW_PANEL_TITLE_FONT }}
+            >
+              Bar Blur
+            </span>
+            <input
+              type="range"
+              min={0}
+              max={24}
+              step={1}
+              value={toolbarBlur ?? 12}
+              onChange={(e) => onToolbarBlurChange?.(parseFloat(e.target.value))}
+              className="h-1 flex-1 cursor-pointer accent-[#F2F2F7]"
+            />
+          </div>
+        ) : null}
+        <div className="px-1 pt-2">
+          <span
+            className="text-[11px] font-semibold text-white/40"
+            style={{ fontFamily: VIEW_PANEL_TITLE_FONT }}
+          >
+            边框
+          </span>
+        </div>
+        {onToolbarBorderBrightnessChange ? (
+          <div className="flex items-center gap-2 px-1">
+            <span
+              className="shrink-0 text-[12px] text-white/60"
+              style={{ fontFamily: VIEW_PANEL_TITLE_FONT }}
+            >
+              Bar 边框亮度
+            </span>
+            <input
+              type="range"
+              min={-0.6}
+              max={0.6}
+              step={0.05}
+              value={toolbarBorderBrightness ?? 0}
+              onChange={(e) => onToolbarBorderBrightnessChange?.(parseFloat(e.target.value))}
+              className="h-1 flex-1 cursor-pointer accent-[#F2F2F7]"
+            />
+            <span className="w-14 text-right text-[11px] text-white/60">
+              {(toolbarBorderBrightness ?? 0).toFixed(2)}
+            </span>
+          </div>
+        ) : null}
+        {onToolbarBorderWidthChange ? (
+          <div className="flex items-center gap-2 px-1">
+            <span
+              className="shrink-0 text-[12px] text-white/60"
+              style={{ fontFamily: VIEW_PANEL_TITLE_FONT }}
+            >
+              边框厚度
+            </span>
+            <input
+              type="range"
+              min={0}
+              max={4}
+              step={0.25}
+              value={toolbarBorderWidth ?? 1}
+              onChange={(e) => onToolbarBorderWidthChange?.(parseFloat(e.target.value))}
+              className="h-1 flex-1 cursor-pointer accent-[#F2F2F7]"
+            />
+            <span className="w-12 text-right text-[11px] text-white/60">
+              {(toolbarBorderWidth ?? 1).toFixed(1)}px
+            </span>
+          </div>
+        ) : null}
+        {onToolbarBorderGradientContrastChange ? (
+          <div className="flex items-center gap-2 px-1">
+            <span
+              className="shrink-0 text-[12px] text-white/60"
+              style={{ fontFamily: VIEW_PANEL_TITLE_FONT }}
+            >
+              渐变对比度
+            </span>
+            <input
+              type="range"
+              min={0}
+              max={2}
+              step={0.1}
+              value={toolbarBorderGradientContrast ?? 1}
+              onChange={(e) =>
+                onToolbarBorderGradientContrastChange?.(parseFloat(e.target.value))
+              }
+              className="h-1 flex-1 cursor-pointer accent-[#F2F2F7]"
+            />
+            <span className="w-12 text-right text-[11px] text-white/60">
+              {(toolbarBorderGradientContrast ?? 1).toFixed(2)}
+            </span>
+          </div>
+        ) : null}
+        <div className="px-1 pt-2">
+          <span
+            className="text-[11px] font-semibold text-white/40"
+            style={{ fontFamily: VIEW_PANEL_TITLE_FONT }}
+          >
+            高光
+          </span>
+        </div>
+        {onToolbarHighlightChange ? (
+          <div className="flex items-center gap-2 px-1">
+            <span
+              className="shrink-0 text-[12px] text-white/60"
+              style={{ fontFamily: VIEW_PANEL_TITLE_FONT }}
+            >
+              Bar 高光条
+            </span>
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.05}
+              value={toolbarHighlight ?? 0.6}
+              onChange={(e) => onToolbarHighlightChange?.(parseFloat(e.target.value))}
+              className="h-1 flex-1 cursor-pointer accent-[#F2F2F7]"
+            />
+            <span className="w-12 text-right text-[11px] text-white/60">
+              {(toolbarHighlight ?? 0.6).toFixed(2)}
+            </span>
+          </div>
+        ) : null}
+        {onToolbarHighlightHeightChange ? (
+          <div className="flex items-center gap-2 px-1">
+            <span
+              className="shrink-0 text-[12px] text-white/60"
+              style={{ fontFamily: VIEW_PANEL_TITLE_FONT }}
+            >
+              高光高度
+            </span>
+            <input
+              type="range"
+              min={0.2}
+              max={1}
+              step={0.05}
+              value={toolbarHighlightHeight ?? 1}
+              onChange={(e) => onToolbarHighlightHeightChange?.(parseFloat(e.target.value))}
+              className="h-1 flex-1 cursor-pointer accent-[#F2F2F7]"
+            />
+            <span className="w-10 text-right text-[11px] text-white/60">
+              {Math.round((toolbarHighlightHeight ?? 1) * 100)}%
+            </span>
+          </div>
+        ) : null}
+        <div className="px-1 pt-2">
+          <span
+            className="text-[11px] font-semibold text-white/40"
+            style={{ fontFamily: VIEW_PANEL_TITLE_FONT }}
+          >
+            阴影
+          </span>
+        </div>
+        {onToolbarShadowStrengthChange ? (
+          <div className="flex items-center gap-2 px-1">
+            <span
+              className="shrink-0 text-[12px] text-white/60"
+              style={{ fontFamily: VIEW_PANEL_TITLE_FONT }}
+            >
+              阴影强度
+            </span>
+            <input
+              type="range"
+              min={0}
+              max={1.5}
+              step={0.05}
+              value={toolbarShadowStrength ?? 1}
+              onChange={(e) => onToolbarShadowStrengthChange?.(parseFloat(e.target.value))}
+              className="h-1 flex-1 cursor-pointer accent-[#F2F2F7]"
+            />
+            <span className="w-12 text-right text-[11px] text-white/60">
+              {(toolbarShadowStrength ?? 1).toFixed(2)}
+            </span>
+          </div>
+        ) : null}
+        {(toolbarBgColor ??
+          toolbarOpacity ??
+          toolbarBlur ??
+          toolbarBorderBrightness ??
+          toolbarBorderWidth ??
+          toolbarBorderGradientContrast ??
+          toolbarHighlight ??
+          toolbarHighlightHeight ??
+          toolbarShadowStrength) != null && (
+          <div className="mt-2 px-1 pb-1">
+            <span
+              className="block text-[11px] font-semibold text-white/40"
+              style={{ fontFamily: VIEW_PANEL_TITLE_FONT }}
+            >
+              Debug 数值
+            </span>
+            <div className="mt-1 space-y-[2px] text-[10px] text-white/45">
+              {toolbarBgColor != null && <div>bgColor: {toolbarBgColor}</div>}
+              {toolbarOpacity != null && <div>opacity: {toolbarOpacity.toFixed(2)}</div>}
+              {toolbarBlur != null && <div>blur: {toolbarBlur.toFixed(1)}px</div>}
+              {toolbarBorderBrightness != null && (
+                <div>borderBrightness: {toolbarBorderBrightness.toFixed(2)}</div>
+              )}
+              {toolbarBorderWidth != null && (
+                <div>borderWidth: {toolbarBorderWidth.toFixed(2)}px</div>
+              )}
+              {toolbarBorderGradientContrast != null && (
+                <div>borderGradientContrast: {toolbarBorderGradientContrast.toFixed(2)}</div>
+              )}
+              {toolbarHighlight != null && (
+                <div>highlight: {toolbarHighlight.toFixed(2)}</div>
+              )}
+              {toolbarHighlightHeight != null && (
+                <div>highlightHeight: {toolbarHighlightHeight.toFixed(2)}</div>
+              )}
+              {toolbarShadowStrength != null && (
+                <div>shadowStrength: {toolbarShadowStrength.toFixed(2)}</div>
+              )}
+            </div>
+          </div>
+        )}
       </ReactLenis>
     </div>
   );

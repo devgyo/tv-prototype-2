@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { motion, type Variants } from 'framer-motion';
 import Image from 'next/image';
 import { topNav, watchlists } from '@/data/watchlists';
 import { cardGroups } from '@/data/card-groups';
@@ -44,6 +43,8 @@ import { AppStyles } from '@/components/AppStyles';
 import { ComponentPanel } from '@/components/ComponentPanel';
 import { Icon } from '@/components/ui/Icon';
 import { StockLogo } from '@/components/ui/StockLogo';
+import { GlassBar } from '@/components/ui/GlassBar';
+import { GlassIconButton } from '@/components/ui/GlassIconButton';
 import Tippy from '@tippyjs/react';
 import 'tippy.js/dist/tippy.css';
 
@@ -62,16 +63,37 @@ const DEFAULT_TOOLTIP_CONFIG = {
   offset: [0, 6] as [number, number],
 };
 
-const BAR_LIQUID_VARIANTS: Variants = {
-  rest: {
-    scale: 1,
-    boxShadow: 'none',
-  },
-  active: {
-    scale: 1.02,
-    boxShadow: 'none',
-  },
-};
+function hexToRgba(hex: string, alpha: number) {
+  const value = hex.replace('#', '');
+  if (value.length !== 6) return hex;
+  const r = parseInt(value.slice(0, 2), 16);
+  const g = parseInt(value.slice(2, 4), 16);
+  const b = parseInt(value.slice(4, 6), 16);
+  const a = Math.min(1, Math.max(0, alpha));
+  return `rgba(${r}, ${g}, ${b}, ${a})`;
+}
+
+function adjustBorderColor(hex: string, level: number) {
+  const value = hex.replace('#', '');
+  if (value.length !== 6) return hex;
+  let r = parseInt(value.slice(0, 2), 16);
+  let g = parseInt(value.slice(2, 4), 16);
+  let b = parseInt(value.slice(4, 6), 16);
+  const cl = (v: number) => Math.max(0, Math.min(255, Math.round(v)));
+  const l = Math.max(-1, Math.min(1, level));
+  if (l < 0) {
+    const f = 1 + l;
+    r *= f;
+    g *= f;
+    b *= f;
+  } else if (l > 0) {
+    const f = l;
+    r = r + (255 - r) * f;
+    g = g + (255 - g) * f;
+    b = b + (255 - b) * f;
+  }
+  return `rgb(${cl(r)}, ${cl(g)}, ${cl(b)})`;
+}
 
 type ViewMoreListItem = {
   id: string;
@@ -110,6 +132,14 @@ export default function Home() {
   );
   const [barBgColor, setBarBgColor] = useState(BAR_BG);
   const [barBorderColor, setBarBorderColor] = useState(BAR_BORDER);
+  const [toolbarOpacity, setToolbarOpacity] = useState(1);
+  const [toolbarBlur, setToolbarBlur] = useState(24);
+  const [toolbarBorderBrightness, setToolbarBorderBrightness] = useState(0);
+  const [toolbarHighlight, setToolbarHighlight] = useState(0.15);
+  const [toolbarHighlightHeight, setToolbarHighlightHeight] = useState(1);
+  const [toolbarShadowStrength, setToolbarShadowStrength] = useState(1);
+  const [toolbarBorderWidth, setToolbarBorderWidth] = useState(1);
+  const [toolbarBorderGradientContrast, setToolbarBorderGradientContrast] = useState(1);
   const [popoverBgColor, setPopoverBgColor] = useState(POPOVER_BG);
   const [popoverBorderColor, setPopoverBorderColor] = useState(POPOVER_BORDER);
   const [barIconHoverPreset, setBarIconHoverPreset] = useState<BarIconHoverPreset>(
@@ -160,13 +190,12 @@ export default function Home() {
   const watchlistButtonRef = useRef<HTMLButtonElement>(null);
   /** 底部 bar 动效：WL↔Ticker、Ticker 互切、Ticker→WL 时统一触发（方案 B 轻微缩放） */
   const [barAnimating, setBarAnimating] = useState(false);
-  /** 底部功能 bar 水平偏移（允许用户左右拖动） */
-  const [barOffsetX, setBarOffsetX] = useState(0);
-  const barDragStateRef = useRef<{ startClientX: number; startOffsetX: number } | null>(null);
-  /** 底部 bar liquid 质感的激活状态（hover / 交互时更“厚实”） */
-  const [barActive, setBarActive] = useState(false);
   const prevStockForChartRef = useRef<Stock | null>(null);
   const barInitializedRef = useRef(false);
+  /** 底部 toolbar 拖动位置，null 表示默认居中底部 */
+  const [toolbarPosition, setToolbarPosition] = useState<{ x: number; y: number } | null>(null);
+  const toolbarWrapRef = useRef<HTMLDivElement>(null);
+  const [toolbarDragging, setToolbarDragging] = useState(false);
   /** 卡片 3-dots 打开的 popover：{ watchlist label, 触发按钮的 rect } */
   const [cardPopover, setCardPopover] = useState<{ label: string; rect: DOMRect } | null>(null);
   /** 顶部 nav 头像点击后的 popover：触发按钮的 rect，null 表示关闭 */
@@ -216,73 +245,6 @@ export default function Home() {
   /** Chart 是否处于暂停状态（影响 Live/Pause 徽标） */
   const [chartPaused, setChartPaused] = useState(false);
 
-  function handleBarPointerMove(event: MouseEvent | TouchEvent) {
-    const state = barDragStateRef.current;
-    if (!state) return;
-
-    let clientX: number;
-    if (event instanceof TouchEvent) {
-      if (event.touches.length === 0) return;
-      clientX = event.touches[0].clientX;
-    } else {
-      clientX = event.clientX;
-    }
-
-    const deltaX = clientX - state.startClientX;
-    let nextOffset = state.startOffsetX + deltaX;
-    const limit = 320;
-    if (nextOffset > limit) nextOffset = limit;
-    if (nextOffset < -limit) nextOffset = -limit;
-
-    setBarOffsetX(nextOffset);
-    if ('preventDefault' in event) {
-      event.preventDefault();
-    }
-  }
-
-  function cleanupBarDragListeners() {
-    window.removeEventListener('mousemove', handleBarPointerMove);
-    window.removeEventListener('mouseup', handleBarPointerUp);
-    window.removeEventListener('touchmove', handleBarPointerMove);
-    window.removeEventListener('touchend', handleBarPointerUp);
-  }
-
-  function handleBarPointerUp() {
-    barDragStateRef.current = null;
-    cleanupBarDragListeners();
-  }
-
-  const handleBarPointerDown = (e: any) => {
-    // 点击按钮本身不触发拖动
-    const target = e.target as HTMLElement | null;
-    if (target && target.closest('button')) {
-      return;
-    }
-
-    const isTouch = 'touches' in e;
-    const point = isTouch ? e.touches[0] : e;
-
-    barDragStateRef.current = {
-      startClientX: point.clientX,
-      startOffsetX: barOffsetX,
-    };
-
-    if (!isTouch && typeof e.preventDefault === 'function') {
-      e.preventDefault();
-    }
-
-    window.addEventListener('mousemove', handleBarPointerMove);
-    window.addEventListener('mouseup', handleBarPointerUp);
-    window.addEventListener('touchmove', handleBarPointerMove, { passive: false });
-    window.addEventListener('touchend', handleBarPointerUp);
-  };
-
-  useEffect(() => {
-    return () => {
-      cleanupBarDragListeners();
-    };
-  }, []);
-
   const toggleView = useCallback((key: keyof typeof viewVisible) => {
     setViewVisible((prev) => {
       const next = { ...prev, [key]: !prev[key] };
@@ -300,6 +262,79 @@ export default function Home() {
   const selectedTopNav = openView
     ? (topNav.find((item) => NAV_LABEL_TO_VIEW_ID[item.label] === openView)?.label ?? null)
     : null;
+
+  /** 底部 Bar 参数持久化（localStorage） */
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const stored = window.localStorage.getItem('pitch-toolbar-style');
+      if (!stored) return;
+      const parsed = JSON.parse(stored) as Partial<{
+        barBgColor: string;
+        toolbarOpacity: number;
+        toolbarBlur: number;
+        toolbarBorderBrightness: number;
+        toolbarHighlight: number;
+        toolbarHighlightHeight: number;
+        toolbarShadowStrength: number;
+        toolbarBorderWidth: number;
+        toolbarBorderGradientContrast: number;
+      }>;
+      if (parsed.barBgColor) setBarBgColor(parsed.barBgColor);
+      if (typeof parsed.toolbarOpacity === 'number') setToolbarOpacity(parsed.toolbarOpacity);
+      if (typeof parsed.toolbarBlur === 'number') setToolbarBlur(parsed.toolbarBlur);
+      if (typeof parsed.toolbarBorderBrightness === 'number') {
+        setToolbarBorderBrightness(parsed.toolbarBorderBrightness);
+      }
+      if (typeof parsed.toolbarHighlight === 'number') setToolbarHighlight(parsed.toolbarHighlight);
+      if (typeof parsed.toolbarHighlightHeight === 'number') {
+        setToolbarHighlightHeight(parsed.toolbarHighlightHeight);
+      }
+      if (typeof parsed.toolbarShadowStrength === 'number') {
+        setToolbarShadowStrength(parsed.toolbarShadowStrength);
+      }
+      if (typeof parsed.toolbarBorderWidth === 'number') {
+        setToolbarBorderWidth(parsed.toolbarBorderWidth);
+      }
+      if (typeof parsed.toolbarBorderGradientContrast === 'number') {
+        setToolbarBorderGradientContrast(parsed.toolbarBorderGradientContrast);
+      }
+    } catch {
+      // ignore parse errors
+    }
+    // 只在首次挂载时运行
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const payload = {
+      barBgColor,
+      toolbarOpacity,
+      toolbarBlur,
+      toolbarBorderBrightness,
+      toolbarHighlight,
+      toolbarHighlightHeight,
+      toolbarShadowStrength,
+      toolbarBorderWidth,
+      toolbarBorderGradientContrast,
+    };
+    try {
+      window.localStorage.setItem('pitch-toolbar-style', JSON.stringify(payload));
+    } catch {
+      // ignore write errors
+    }
+  }, [
+    barBgColor,
+    toolbarOpacity,
+    toolbarBlur,
+    toolbarBorderBrightness,
+    toolbarHighlight,
+    toolbarHighlightHeight,
+    toolbarShadowStrength,
+    toolbarBorderWidth,
+    toolbarBorderGradientContrast,
+  ]);
 
   useEffect(() => {
     setWatchlistStocks(buildWatchlistStocks());
@@ -372,6 +407,23 @@ export default function Home() {
     window.addEventListener('keydown', onKeyDown, true);
     return () => window.removeEventListener('keydown', onKeyDown, true);
   }, []);
+
+  /* 底部 toolbar 拖动：mousemove / mouseup 监听 */
+  useEffect(() => {
+    if (!toolbarDragging) return;
+    const onMove = (e: MouseEvent) => {
+      setToolbarPosition((prev) =>
+        prev ? { x: prev.x + e.movementX, y: prev.y + e.movementY } : null
+      );
+    };
+    const onUp = () => setToolbarDragging(false);
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+    return () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    };
+  }, [toolbarDragging]);
 
   /* Event/News 关闭时延迟卸载，用于播放离开动效 + flex 收缩过渡；开启时先 flex 0，下一帧再 flex 1，让两个面板的 flex 都有过渡（另一块从 2→1，新块从 0→1） */
   useEffect(() => {
@@ -935,6 +987,24 @@ export default function Home() {
                         borderColor={watchlistBorderColor}
                         backgroundColor={watchlistBgColor}
                         width={280}
+                        toolbarBgColor={barBgColor}
+                        onToolbarBgColorChange={setBarBgColor}
+                        toolbarOpacity={toolbarOpacity}
+                        toolbarBlur={toolbarBlur}
+                        onToolbarOpacityChange={setToolbarOpacity}
+                        onToolbarBlurChange={setToolbarBlur}
+                        toolbarBorderBrightness={toolbarBorderBrightness}
+                        onToolbarBorderBrightnessChange={setToolbarBorderBrightness}
+                        toolbarHighlight={toolbarHighlight}
+                        onToolbarHighlightChange={setToolbarHighlight}
+                        toolbarHighlightHeight={toolbarHighlightHeight}
+                        onToolbarHighlightHeightChange={setToolbarHighlightHeight}
+                        toolbarShadowStrength={toolbarShadowStrength}
+                        onToolbarShadowStrengthChange={setToolbarShadowStrength}
+                        toolbarBorderWidth={toolbarBorderWidth}
+                        onToolbarBorderWidthChange={setToolbarBorderWidth}
+                        toolbarBorderGradientContrast={toolbarBorderGradientContrast}
+                        onToolbarBorderGradientContrastChange={setToolbarBorderGradientContrast}
                       />
                     </div>
                   )}
@@ -964,45 +1034,70 @@ export default function Home() {
         ) : null}
         {openView === 'watchlists' ? (
           <div
-            className="page-fade-in fixed bottom-4 left-1/2 z-30"
-            style={{
-              transform: `translateX(calc(-50% + ${barOffsetX}px))`,
-            }}
+            ref={toolbarWrapRef}
+            className={`page-fade-in z-30 ${toolbarPosition === null ? 'fixed bottom-4 left-1/2 -translate-x-1/2' : ''}`}
+            style={
+              toolbarPosition !== null
+                ? {
+                    position: 'fixed',
+                    left: toolbarPosition.x,
+                    top: toolbarPosition.y,
+                  }
+                : undefined
+            }
           >
-            <motion.div
+            <div
               className={`flex items-center gap-2 ${barAnimating ? 'bar-ticker-enter' : ''}`}
               style={{ fontFamily: 'var(--font-inter)' }}
-              onMouseDown={handleBarPointerDown}
-              onTouchStart={handleBarPointerDown}
-              onMouseEnter={() => setBarActive(true)}
-              onMouseLeave={() => setBarActive(false)}
-              variants={BAR_LIQUID_VARIANTS}
-              animate={barActive || barAnimating ? 'active' : 'rest'}
-              transition={{ type: 'spring', stiffness: 260, damping: 22, mass: 0.9 }}
             >
-              <div className="flex w-7 items-center justify-center">
-                <button
-                  type="button"
-                  onClick={() => setSelectedStockForChart(null)}
-                  aria-label="返回 Watchlist"
-                  className={`rounded-full border p-1.5 text-white/80 shadow-lg outline-none transition-[opacity] duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] hover:scale-95 hover:text-white active:scale-[0.9] focus-visible:ring-2 focus-visible:ring-[#444] focus-visible:ring-offset-2 focus-visible:ring-offset-[#1a1a1a] ${BACK_BUTTON_HOVER_CLASS[backButtonHoverPreset]} ${
-                    selectedStockForChart ? 'opacity-100' : 'pointer-events-none opacity-0'
-                  }`}
-                  style={{ backgroundColor: barBgColor, borderColor: barBorderColor }}
-                >
-                  <Icon name="back" className="h-4 w-4" />
-                </button>
-              </div>
               <div
-                className="flex items-center gap-2 rounded-full border pl-1 pr-1 py-1 backdrop-blur-lg backdrop-saturate-150"
-                style={{
-                  borderColor: barBorderColor,
-                  backgroundColor: 'rgba(18,18,20,0.86)',
-                  backgroundImage:
-                    'linear-gradient(135deg, rgba(60,60,68,0.9), rgba(10,10,12,0.98))',
+                role="button"
+                tabIndex={0}
+                aria-label="拖动工具栏"
+                className="flex cursor-grab items-center justify-center rounded-full p-1.5 text-white/60 outline-none active:cursor-grabbing hover:bg-white/10 hover:text-white/80 focus-visible:ring-2 focus-visible:ring-[#444] focus-visible:ring-offset-2 focus-visible:ring-offset-[#1a1a1a]"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  const rect = toolbarWrapRef.current?.getBoundingClientRect();
+                  if (rect) {
+                    setToolbarPosition({ x: rect.left, y: rect.top });
+                    setToolbarDragging(true);
+                  }
                 }}
+              >
+                <Icon name="grip" className="h-4 w-4" />
+              </div>
+              <GlassIconButton
+                backgroundColor={barBgColor}
+                borderColor={barBorderColor}
+                opacity={toolbarOpacity}
+                blur={toolbarBlur}
+                borderBrightness={toolbarBorderBrightness}
+                borderWidth={toolbarBorderWidth}
+                borderGradientContrast={toolbarBorderGradientContrast}
+                highlightOpacity={toolbarHighlight}
+                highlightHeight={toolbarHighlightHeight}
+                shadowStrength={toolbarShadowStrength}
+                size={34}
+                ariaLabel="返回 Watchlist"
+                onClick={() => setSelectedStockForChart(null)}
+              >
+                <span className="flex items-center justify-center p-[5px]">
+                  <Icon name="back" className="h-5 w-5" strokeWidth={1.33} />
+                </span>
+              </GlassIconButton>
+              <GlassBar
+                backgroundColor={barBgColor}
+                borderColor={barBorderColor}
+                opacity={toolbarOpacity}
+                blur={toolbarBlur}
+                borderBrightness={toolbarBorderBrightness}
+                borderWidth={toolbarBorderWidth}
+                borderGradientContrast={toolbarBorderGradientContrast}
+                highlightOpacity={toolbarHighlight}
+                highlightHeight={toolbarHighlightHeight}
+                shadowStrength={toolbarShadowStrength}
                 role="toolbar"
-                aria-label="View 切换"
+                ariaLabel="View 切换"
               >
                 <div className="flex items-center gap-1.5">
                   <Tippy
@@ -1033,23 +1128,17 @@ export default function Home() {
                       }}
                       aria-label={selectedStockForChart ? 'Ticker' : 'Watchlist'}
                       aria-expanded={!!watchlistPopoverRect}
-                      className="flex w-fit shrink-0 cursor-pointer items-center gap-1.5 rounded-full text-[12px] font-medium text-white/90 outline-none transition-[transform,background-color,color] duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] hover:bg-white/10 hover:text-white active:scale-[0.97] focus-visible:ring-2 focus-visible:ring-[#444] focus-visible:ring-offset-2 focus-visible:ring-offset-[#1a1a1a]"
-                      style={{
-                        paddingTop: 6,
-                        paddingBottom: 6,
-                        paddingLeft: 6,
-                        paddingRight: 8,
-                        width: 'fit-content',
-                      }}
+                      className="flex h-8 shrink-0 cursor-pointer items-center gap-1.5 rounded-full py-[2px] pl-[6px] pr-[10px] text-[12px] font-medium text-white/90 outline-none transition-[transform,background-color,color] duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] hover:bg-white/10 hover:text-white active:scale-[0.97] focus-visible:ring-2 focus-visible:ring-[#444] focus-visible:ring-offset-2 focus-visible:ring-offset-[#1a1a1a]"
+                      style={{ width: 'fit-content' }}
                     >
                       {selectedStockForChart ? (
                         <>
                           <Image
                             src={selectedStockForChart.logo}
                             alt={selectedStockForChart.code}
-                            width={14}
-                            height={14}
-                            className="h-3.5 w-3.5 shrink-0 rounded-full object-contain"
+                            width={18}
+                            height={18}
+                            className="h-[18px] w-[18px] shrink-0 rounded-full object-contain"
                           />
                           <span className="font-semibold text-white">
                             {selectedStockForChart.code}
@@ -1063,10 +1152,10 @@ export default function Home() {
                           >
                             <Icon
                               name="bookmark"
-                              className="h-3.5 w-3.5 shrink-0"
+                              className="h-5 w-5 shrink-0"
                             />
                           </span>
-                          <span className="truncate">
+                          <span className="truncate text-[13px]">
                             {selectedWatchlist ?? 'med'}
                           </span>
                         </>
@@ -1075,7 +1164,7 @@ export default function Home() {
                   </Tippy>
                   <div className="h-4 w-px shrink-0 bg-white/20" aria-hidden />
                 </div>
-                <div className="flex items-center gap-0.5">
+                <div className="flex items-center gap-[4px]">
                   {[
                     { key: 'ticker' as const, label: 'Ticker', icon: 'ticker' as const },
                     { key: 'event' as const, label: 'Event', icon: 'event' as const },
@@ -1093,26 +1182,36 @@ export default function Home() {
                         type="button"
                         onClick={() => toggleView(key)}
                         aria-label={label}
-                        className={`rounded-full p-1.5 outline-none transition-[transform,background-color,color] duration-150 active:scale-[0.9] focus-visible:ring-2 focus-visible:ring-[#444] focus-visible:ring-offset-2 focus-visible:ring-offset-[#1a1a1a] ${BAR_ICON_HOVER_CLASS[barIconHoverPreset]} ${
+                        className={`flex h-8 w-8 items-center justify-center rounded-full p-[2px] outline-none transition-[transform,background-color,color] duration-150 active:scale-[0.9] focus-visible:ring-2 focus-visible:ring-[#444] focus-visible:ring-offset-2 focus-visible:ring-offset-[#1a1a1a] ${BAR_ICON_HOVER_CLASS[barIconHoverPreset]} ${
                           viewVisible[key] ? '' : 'text-white/50 hover:text-white/70'
                         }`}
                       >
                         <Icon
-                          name={icon}
-                          className={`h-4 w-4 ${viewVisible[key] ? 'text-white' : ''}`}
+                          name={key === 'ticker' ? 'list' : key === 'options' ? 'options' : icon}
+                          className={`h-5 w-5 ${viewVisible[key] ? 'text-white' : ''}`}
+                          strokeWidth={1.33}
                         />
                       </button>
                     </Tippy>
                   ))}
                 </div>
-              </div>
-              <button
-                type="button"
-                aria-label={alertOn ? 'Alert（开启）' : 'Alert（关闭）'}
+              </GlassBar>
+              <GlassIconButton
+                backgroundColor={barBgColor}
+                borderColor={barBorderColor}
+                opacity={toolbarOpacity}
+                blur={toolbarBlur}
+                borderBrightness={toolbarBorderBrightness}
+                borderWidth={toolbarBorderWidth}
+                borderGradientContrast={toolbarBorderGradientContrast}
+                highlightOpacity={toolbarHighlight}
+                highlightHeight={toolbarHighlightHeight}
+                shadowStrength={toolbarShadowStrength}
+                size={34}
+                ariaLabel={alertOn ? 'Alert（开启）' : 'Alert（关闭）'}
                 onClick={() => {
                   const isSystem = selectedWatchlistSource === 'system';
                   if (!alertOn) {
-                    // 开启：系统列表弹说明，自定义列表直接开启
                     if (isSystem) {
                       setAlertDialogKind('open');
                       setAlertDialogOpen(true);
@@ -1121,22 +1220,19 @@ export default function Home() {
                     }
                     return;
                   }
-                  // 关闭：所有情况都给二次确认
                   setAlertDialogKind('close');
                   setAlertDialogOpen(true);
                 }}
-                className={`flex shrink-0 items-center justify-center rounded-full border text-white/80 shadow-lg outline-none transition-[transform,background-color,color] duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] hover:scale-95 hover:text-white active:scale-[0.9] focus-visible:ring-2 focus-visible:ring-[#444] focus-visible:ring-offset-2 focus-visible:ring-offset-[#1a1a1a] ${BACK_BUTTON_HOVER_CLASS[backButtonHoverPreset]} ${alertOn ? 'h-7 w-7 gap-0 p-0' : 'gap-1.5 py-1.5 pl-1.5 pr-2.5'}`}
-                style={{ backgroundColor: barBgColor, borderColor: barBorderColor, fontFamily: 'var(--font-inter)' }}
               >
-                <Icon name={alertOn ? 'bell-ring' : 'bell-minus'} className="h-4 w-4 shrink-0 transition-[color] duration-200" />
-                <span
-                  className="min-w-0 overflow-hidden whitespace-nowrap text-[12px] font-medium transition-[max-width,opacity] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]"
-                  style={{ maxWidth: alertOn ? 0 : 72, opacity: alertOn ? 0 : 1 }}
-                >
-                  Alert Off
+                <span className="flex items-center justify-center p-[5px]">
+                  <Icon
+                    name={alertOn ? 'bell-ring' : 'bell-minus'}
+                    className="h-5 w-5 shrink-0 transition-[color] duration-200"
+                    strokeWidth={1.33}
+                  />
                 </span>
-              </button>
-            </motion.div>
+              </GlassIconButton>
+            </div>
           </div>
         ) : null}
         {watchlistPopoverRect && (
@@ -2397,6 +2493,40 @@ export default function Home() {
                     onChange={(e) => setBarBorderColor(e.target.value)}
                     className="h-8 w-14 cursor-pointer rounded border-0 bg-transparent p-0"
                   />
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  <label className="text-[13px] text-[#F2F2F7]">底部 Bar 边框亮度</label>
+                  <div className="flex flex-1 items-center gap-2">
+                    <input
+                      type="range"
+                      min={-0.6}
+                      max={0.6}
+                      step={0.05}
+                      value={toolbarBorderBrightness}
+                      onChange={(e) => setToolbarBorderBrightness(parseFloat(e.target.value))}
+                      className="h-1 flex-1 cursor-pointer accent-[#F2F2F7]"
+                    />
+                    <span className="w-10 text-right text-[11px] text-white/60">
+                      {toolbarBorderBrightness < 0 ? '暗' : toolbarBorderBrightness > 0 ? '亮' : '中'}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  <label className="text-[13px] text-[#F2F2F7]">底部 Bar 高光条</label>
+                  <div className="flex flex-1 items-center gap-2">
+                    <input
+                      type="range"
+                      min={0}
+                      max={1}
+                      step={0.05}
+                      value={toolbarHighlight}
+                      onChange={(e) => setToolbarHighlight(parseFloat(e.target.value))}
+                      className="h-1 flex-1 cursor-pointer accent-[#F2F2F7]"
+                    />
+                    <span className="w-10 text-right text-[11px] text-white/60">
+                      {toolbarHighlight === 0 ? '关' : toolbarHighlight < 0.5 ? '弱' : '强'}
+                    </span>
+                  </div>
                 </div>
                 <div className="flex items-center justify-between gap-2">
                   <label className="text-[13px] text-[#F2F2F7]">下拉/菜单 背景</label>
