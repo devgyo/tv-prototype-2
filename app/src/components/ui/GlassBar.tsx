@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { hexToRgba, adjustBorderColor } from '@/lib/color-utils';
 
 export type GlassBarProps = {
   backgroundColor: string;
@@ -13,6 +14,12 @@ export type GlassBarProps = {
   highlightOpacity: number;
   highlightHeight: number;
   shadowStrength: number;
+  /** 可选：与 WL icon 一致的高光色，叠加在白色高光之上 */
+  accentColor?: string;
+  /** accent 层透明度 0–1，默认 0.22 */
+  accentOpacity?: number;
+  /** accent 渐变透明位置 0–1（如 0.6 表示 60% 处透明），默认 0.6 */
+  accentGradientStop?: number;
   /** 整个 Bar 的目标高度（px），默认 42 */
   height?: number;
   role?: string;
@@ -20,38 +27,6 @@ export type GlassBarProps = {
   className?: string;
   children: React.ReactNode;
 };
-
-function hexToRgba(hex: string, alpha: number) {
-  const value = hex.replace('#', '');
-  if (value.length !== 6) return hex;
-  const r = parseInt(value.slice(0, 2), 16);
-  const g = parseInt(value.slice(2, 4), 16);
-  const b = parseInt(value.slice(4, 6), 16);
-  const a = Math.min(1, Math.max(0, alpha));
-  return `rgba(${r}, ${g}, ${b}, ${a})`;
-}
-
-function adjustBorderColor(hex: string, level: number) {
-  const value = hex.replace('#', '');
-  if (value.length !== 6) return hex;
-  let r = parseInt(value.slice(0, 2), 16);
-  let g = parseInt(value.slice(2, 4), 16);
-  let b = parseInt(value.slice(4, 6), 16);
-  const cl = (v: number) => Math.max(0, Math.min(255, Math.round(v)));
-  const l = Math.max(-1, Math.min(1, level));
-  if (l < 0) {
-    const f = 1 + l;
-    r *= f;
-    g *= f;
-    b *= f;
-  } else if (l > 0) {
-    const f = l;
-    r = r + (255 - r) * f;
-    g = g + (255 - g) * f;
-    b = b + (255 - b) * f;
-  }
-  return `rgb(${cl(r)}, ${cl(g)}, ${cl(b)})`;
-}
 
 export function GlassBar({
   backgroundColor,
@@ -64,6 +39,9 @@ export function GlassBar({
   highlightOpacity,
   highlightHeight,
   shadowStrength,
+  accentColor,
+  accentOpacity = 0.22,
+  accentGradientStop = 0.6,
   height,
   role,
   ariaLabel,
@@ -114,6 +92,18 @@ export function GlassBar({
             className="pointer-events-none absolute inset-0 rounded-[999px] bg-gradient-to-b from-white/55 via-white/15 to-transparent mix-blend-screen"
             style={{
               opacity: highlightOpacity,
+              transform: `scaleY(${highlightHeight})`,
+              transformOrigin: 'center',
+            }}
+            aria-hidden
+          />
+        )}
+        {accentColor && (
+          <div
+            className="pointer-events-none absolute inset-0 rounded-[999px]"
+            style={{
+              background: `linear-gradient(to bottom, ${hexToRgba(accentColor, Math.min(1, Math.max(0, accentOpacity)))}, transparent ${Math.round(accentGradientStop * 100)}%)`,
+              mixBlendMode: 'overlay',
               transform: `scaleY(${highlightHeight})`,
               transformOrigin: 'center',
             }}

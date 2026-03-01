@@ -30,7 +30,7 @@ export function TickerList({ stocks, onTickerClick }: TickerListProps) {
                   : undefined
               }
             >
-              <StockLogo logo={s.logo} code={s.code} size={18} />
+              <StockLogo logo={s.logo} code={s.code} />
               <div className="min-w-0 flex-1">
                 <div className="font-medium text-[#F2F2F7]" style={{ fontFamily: "var(--font-inter)", fontSize: "12px" }}>
                   {s.code}

@@ -28,6 +28,10 @@ type EventPanelProps = {
   onToolbarHighlightChange?: (value: number) => void;
   toolbarHighlightHeight?: number;
   onToolbarHighlightHeightChange?: (value: number) => void;
+  toolbarAccentOpacity?: number;
+  onToolbarAccentOpacityChange?: (value: number) => void;
+  toolbarAccentGradientStop?: number;
+  onToolbarAccentGradientStopChange?: (value: number) => void;
   toolbarShadowStrength?: number;
   onToolbarShadowStrengthChange?: (value: number) => void;
   toolbarBorderWidth?: number;
@@ -52,6 +56,10 @@ export function EventPanel({
   onToolbarHighlightChange,
   toolbarHighlightHeight,
   onToolbarHighlightHeightChange,
+  toolbarAccentOpacity,
+  onToolbarAccentOpacityChange,
+  toolbarAccentGradientStop,
+  onToolbarAccentGradientStopChange,
   toolbarShadowStrength,
   onToolbarShadowStrengthChange,
   toolbarBorderWidth,
@@ -273,6 +281,50 @@ export function EventPanel({
             </span>
           </div>
         ) : null}
+        {onToolbarAccentOpacityChange ? (
+          <div className="flex items-center gap-2 px-1">
+            <span
+              className="shrink-0 text-[12px] text-white/60"
+              style={{ fontFamily: VIEW_PANEL_TITLE_FONT }}
+            >
+              彩色高光 透明度
+            </span>
+            <input
+              type="range"
+              min={0}
+              max={0.5}
+              step={0.02}
+              value={toolbarAccentOpacity ?? 0.22}
+              onChange={(e) => onToolbarAccentOpacityChange?.(parseFloat(e.target.value))}
+              className="h-1 flex-1 cursor-pointer accent-[#F2F2F7]"
+            />
+            <span className="w-10 text-right text-[11px] text-white/60">
+              {((toolbarAccentOpacity ?? 0.22) * 100).toFixed(0)}%
+            </span>
+          </div>
+        ) : null}
+        {onToolbarAccentGradientStopChange ? (
+          <div className="flex items-center gap-2 px-1">
+            <span
+              className="shrink-0 text-[12px] text-white/60"
+              style={{ fontFamily: VIEW_PANEL_TITLE_FONT }}
+            >
+              彩色高光 渐变结束
+            </span>
+            <input
+              type="range"
+              min={0.2}
+              max={1}
+              step={0.05}
+              value={toolbarAccentGradientStop ?? 0.6}
+              onChange={(e) => onToolbarAccentGradientStopChange?.(parseFloat(e.target.value))}
+              className="h-1 flex-1 cursor-pointer accent-[#F2F2F7]"
+            />
+            <span className="w-10 text-right text-[11px] text-white/60">
+              {((toolbarAccentGradientStop ?? 0.6) * 100).toFixed(0)}%
+            </span>
+          </div>
+        ) : null}
         <div className="px-1 pt-2">
           <span
             className="text-[11px] font-semibold text-white/40"
@@ -311,6 +363,8 @@ export function EventPanel({
           toolbarBorderGradientContrast ??
           toolbarHighlight ??
           toolbarHighlightHeight ??
+          toolbarAccentOpacity ??
+          toolbarAccentGradientStop ??
           toolbarShadowStrength) != null && (
           <div className="mt-2 px-1 pb-1">
             <span
@@ -337,6 +391,12 @@ export function EventPanel({
               )}
               {toolbarHighlightHeight != null && (
                 <div>highlightHeight: {toolbarHighlightHeight.toFixed(2)}</div>
+              )}
+              {toolbarAccentOpacity != null && (
+                <div>accentOpacity: {toolbarAccentOpacity.toFixed(2)}</div>
+              )}
+              {toolbarAccentGradientStop != null && (
+                <div>accentGradientStop: {toolbarAccentGradientStop.toFixed(2)}</div>
               )}
               {toolbarShadowStrength != null && (
                 <div>shadowStrength: {toolbarShadowStrength.toFixed(2)}</div>

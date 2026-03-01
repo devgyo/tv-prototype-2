@@ -13,7 +13,6 @@ import {
   CARD_HOVER,
   CARD_ACTIVE,
   BACK_BUTTON_HOVER_PRESET_DEFAULT,
-  BACK_BUTTON_HOVER_CLASS,
   BAR_BG,
   BAR_BORDER,
   POPOVER_BG,
@@ -46,54 +45,16 @@ import { StockLogo } from '@/components/ui/StockLogo';
 import { GlassBar } from '@/components/ui/GlassBar';
 import { GlassIconButton } from '@/components/ui/GlassIconButton';
 import Tippy from '@tippyjs/react';
-import 'tippy.js/dist/tippy.css';
-
-const DEFAULT_TOOLTIP_CONFIG = {
-  backgroundColor: '#292929',
-  textColor: '#F2F2F7',
-  borderColor: '',
-  borderWidth: 0,
-  borderRadius: 4,
-  paddingX: 6,
-  paddingY: 6,
-  fontSize: 12,
-  fontWeight: 400,
-  shadow: true,
-  arrow: false,
-  offset: [0, 6] as [number, number],
-};
-
-function hexToRgba(hex: string, alpha: number) {
-  const value = hex.replace('#', '');
-  if (value.length !== 6) return hex;
-  const r = parseInt(value.slice(0, 2), 16);
-  const g = parseInt(value.slice(2, 4), 16);
-  const b = parseInt(value.slice(4, 6), 16);
-  const a = Math.min(1, Math.max(0, alpha));
-  return `rgba(${r}, ${g}, ${b}, ${a})`;
-}
-
-function adjustBorderColor(hex: string, level: number) {
-  const value = hex.replace('#', '');
-  if (value.length !== 6) return hex;
-  let r = parseInt(value.slice(0, 2), 16);
-  let g = parseInt(value.slice(2, 4), 16);
-  let b = parseInt(value.slice(4, 6), 16);
-  const cl = (v: number) => Math.max(0, Math.min(255, Math.round(v)));
-  const l = Math.max(-1, Math.min(1, level));
-  if (l < 0) {
-    const f = 1 + l;
-    r *= f;
-    g *= f;
-    b *= f;
-  } else if (l > 0) {
-    const f = l;
-    r = r + (255 - r) * f;
-    g = g + (255 - g) * f;
-    b = b + (255 - b) * f;
-  }
-  return `rgb(${cl(r)}, ${cl(g)}, ${cl(b)})`;
-}
+import { DEFAULT_TOOLTIP_CONFIG } from '@/constants/tooltip';
+import { NAV_LABEL_TO_VIEW_ID } from '@/constants/nav-views';
+import {
+  PANEL_EXIT_DELAY_MS,
+  OPTIONS_TRANSITION_MS,
+  EXPAND_READY_DELAY_MS,
+} from '@/constants/transitions';
+import { RECENTS_MAX_COUNT, DEFAULT_WATCHLIST_LABEL } from '@/constants/layout';
+import { useToolbarStylePersistence } from '@/hooks/use-toolbar-style-persistence';
+import { useBarAnimation } from '@/hooks/use-bar-animation';
 
 type ViewMoreListItem = {
   id: string;
@@ -104,16 +65,6 @@ type ViewMoreListItem = {
   tickerCount?: number;
   iconSrc?: string | null;
 };
-
-/** 可开启/关闭的 view，与 topNav 一一对应，后续可扩展 */
-const NAV_LABEL_TO_VIEW_ID: Record<string, string> = {
-  Overview: 'watchlists',
-  Screener: 'screener',
-  'Trends AI': 'trends',
-  DarkPool: 'darkpool',
-  Trades: 'trades',
-};
-
 
 export default function Home() {
   /** 当前打开的 view：null = 主页（无 view） */
@@ -137,6 +88,8 @@ export default function Home() {
   const [toolbarBorderBrightness, setToolbarBorderBrightness] = useState(0);
   const [toolbarHighlight, setToolbarHighlight] = useState(0.15);
   const [toolbarHighlightHeight, setToolbarHighlightHeight] = useState(1);
+  const [toolbarAccentOpacity, setToolbarAccentOpacity] = useState(0.22);
+  const [toolbarAccentGradientStop, setToolbarAccentGradientStop] = useState(0.6);
   const [toolbarShadowStrength, setToolbarShadowStrength] = useState(1);
   const [toolbarBorderWidth, setToolbarBorderWidth] = useState(1);
   const [toolbarBorderGradientContrast, setToolbarBorderGradientContrast] = useState(1);
@@ -188,10 +141,6 @@ export default function Home() {
   const prevEventVisibleRef = useRef(true);
   const prevNewsVisibleRef = useRef(true);
   const watchlistButtonRef = useRef<HTMLButtonElement>(null);
-  /** 底部 bar 动效：WL↔Ticker、Ticker 互切、Ticker→WL 时统一触发（方案 B 轻微缩放） */
-  const [barAnimating, setBarAnimating] = useState(false);
-  const prevStockForChartRef = useRef<Stock | null>(null);
-  const barInitializedRef = useRef(false);
   /** 底部 toolbar 拖动位置，null 表示默认居中底部 */
   const [toolbarPosition, setToolbarPosition] = useState<{ x: number; y: number } | null>(null);
   const toolbarWrapRef = useRef<HTMLDivElement>(null);
@@ -263,78 +212,36 @@ export default function Home() {
     ? (topNav.find((item) => NAV_LABEL_TO_VIEW_ID[item.label] === openView)?.label ?? null)
     : null;
 
-  /** 底部 Bar 参数持久化（localStorage） */
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    try {
-      const stored = window.localStorage.getItem('pitch-toolbar-style');
-      if (!stored) return;
-      const parsed = JSON.parse(stored) as Partial<{
-        barBgColor: string;
-        toolbarOpacity: number;
-        toolbarBlur: number;
-        toolbarBorderBrightness: number;
-        toolbarHighlight: number;
-        toolbarHighlightHeight: number;
-        toolbarShadowStrength: number;
-        toolbarBorderWidth: number;
-        toolbarBorderGradientContrast: number;
-      }>;
-      if (parsed.barBgColor) setBarBgColor(parsed.barBgColor);
-      if (typeof parsed.toolbarOpacity === 'number') setToolbarOpacity(parsed.toolbarOpacity);
-      if (typeof parsed.toolbarBlur === 'number') setToolbarBlur(parsed.toolbarBlur);
-      if (typeof parsed.toolbarBorderBrightness === 'number') {
-        setToolbarBorderBrightness(parsed.toolbarBorderBrightness);
-      }
-      if (typeof parsed.toolbarHighlight === 'number') setToolbarHighlight(parsed.toolbarHighlight);
-      if (typeof parsed.toolbarHighlightHeight === 'number') {
-        setToolbarHighlightHeight(parsed.toolbarHighlightHeight);
-      }
-      if (typeof parsed.toolbarShadowStrength === 'number') {
-        setToolbarShadowStrength(parsed.toolbarShadowStrength);
-      }
-      if (typeof parsed.toolbarBorderWidth === 'number') {
-        setToolbarBorderWidth(parsed.toolbarBorderWidth);
-      }
-      if (typeof parsed.toolbarBorderGradientContrast === 'number') {
-        setToolbarBorderGradientContrast(parsed.toolbarBorderGradientContrast);
-      }
-    } catch {
-      // ignore parse errors
-    }
-    // 只在首次挂载时运行
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const barAnimating = useBarAnimation(openView, selectedStockForChart);
 
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const payload = {
+  useToolbarStylePersistence(
+    {
       barBgColor,
       toolbarOpacity,
       toolbarBlur,
       toolbarBorderBrightness,
       toolbarHighlight,
       toolbarHighlightHeight,
+      toolbarAccentOpacity,
+      toolbarAccentGradientStop,
       toolbarShadowStrength,
       toolbarBorderWidth,
       toolbarBorderGradientContrast,
-    };
-    try {
-      window.localStorage.setItem('pitch-toolbar-style', JSON.stringify(payload));
-    } catch {
-      // ignore write errors
+    },
+    {
+      setBarBgColor,
+      setToolbarOpacity,
+      setToolbarBlur,
+      setToolbarBorderBrightness,
+      setToolbarHighlight,
+      setToolbarHighlightHeight,
+      setToolbarAccentOpacity,
+      setToolbarAccentGradientStop,
+      setToolbarShadowStrength,
+      setToolbarBorderWidth,
+      setToolbarBorderGradientContrast,
     }
-  }, [
-    barBgColor,
-    toolbarOpacity,
-    toolbarBlur,
-    toolbarBorderBrightness,
-    toolbarHighlight,
-    toolbarHighlightHeight,
-    toolbarShadowStrength,
-    toolbarBorderWidth,
-    toolbarBorderGradientContrast,
-  ]);
+  );
 
   useEffect(() => {
     setWatchlistStocks(buildWatchlistStocks());
@@ -368,22 +275,6 @@ export default function Home() {
       setViewMoreSelectedList(null);
     }
   }, [viewMoreCategoryId]);
-
-  /** 底部 bar 方案 B 动效：WL↔Ticker、Ticker 互切、Ticker→WL 时统一触发 */
-  useEffect(() => {
-    if (openView !== 'watchlists') return;
-    if (!barInitializedRef.current) {
-      barInitializedRef.current = true;
-      prevStockForChartRef.current = selectedStockForChart;
-      return;
-    }
-    if (prevStockForChartRef.current !== selectedStockForChart) {
-      setBarAnimating(true);
-      prevStockForChartRef.current = selectedStockForChart;
-      const t = setTimeout(() => setBarAnimating(false), 320);
-      return () => clearTimeout(t);
-    }
-  }, [openView, selectedStockForChart]);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -434,12 +325,12 @@ export default function Home() {
       if (!prevEventVisibleRef.current) {
         prevEventVisibleRef.current = true;
         setEventExpandReady(false);
-        const t = setTimeout(() => setEventExpandReady(true), 50);
+        const t = setTimeout(() => setEventExpandReady(true), EXPAND_READY_DELAY_MS);
         return () => clearTimeout(t);
       }
     } else {
       prevEventVisibleRef.current = false;
-      eventExitRef.current = setTimeout(() => setDisplayEvent(false), 340);
+      eventExitRef.current = setTimeout(() => setDisplayEvent(false), PANEL_EXIT_DELAY_MS);
     }
     return () => {
       if (eventExitRef.current) clearTimeout(eventExitRef.current);
@@ -453,12 +344,12 @@ export default function Home() {
       if (!prevNewsVisibleRef.current) {
         prevNewsVisibleRef.current = true;
         setNewsExpandReady(false);
-        const t = setTimeout(() => setNewsExpandReady(true), 50);
+        const t = setTimeout(() => setNewsExpandReady(true), EXPAND_READY_DELAY_MS);
         return () => clearTimeout(t);
       }
     } else {
       prevNewsVisibleRef.current = false;
-      newsExitRef.current = setTimeout(() => setDisplayNews(false), 340);
+      newsExitRef.current = setTimeout(() => setDisplayNews(false), PANEL_EXIT_DELAY_MS);
     }
     return () => {
       if (newsExitRef.current) clearTimeout(newsExitRef.current);
@@ -472,7 +363,7 @@ export default function Home() {
       tickerExitRef.current = null;
       setDisplayTicker(true);
     } else {
-      tickerExitRef.current = setTimeout(() => setDisplayTicker(false), 340);
+      tickerExitRef.current = setTimeout(() => setDisplayTicker(false), PANEL_EXIT_DELAY_MS);
     }
     return () => {
       if (tickerExitRef.current) clearTimeout(tickerExitRef.current);
@@ -486,7 +377,7 @@ export default function Home() {
       snapshotExitRef.current = null;
       setDisplaySnapshot(true);
     } else {
-      snapshotExitRef.current = setTimeout(() => setDisplaySnapshot(false), 340);
+      snapshotExitRef.current = setTimeout(() => setDisplaySnapshot(false), PANEL_EXIT_DELAY_MS);
     }
     return () => {
       if (snapshotExitRef.current) clearTimeout(snapshotExitRef.current);
@@ -500,7 +391,7 @@ export default function Home() {
       darkpoolExitRef.current = null;
       setDisplayDarkpool(true);
     } else {
-      darkpoolExitRef.current = setTimeout(() => setDisplayDarkpool(false), 340);
+      darkpoolExitRef.current = setTimeout(() => setDisplayDarkpool(false), PANEL_EXIT_DELAY_MS);
     }
     return () => {
       if (darkpoolExitRef.current) clearTimeout(darkpoolExitRef.current);
@@ -508,7 +399,6 @@ export default function Home() {
   }, [viewVisible.darkpool]);
 
   /* Options 与 Event/News 互斥：打开时等 Event/News 离开动效播完再显示 Options；关闭时播完离开动效再切回 Event/News */
-  const OPTIONS_TRANSITION_MS = 340;
   useEffect(() => {
     if (viewVisible.options) {
       if (optionsExitRef.current) {
@@ -536,7 +426,7 @@ export default function Home() {
   const currentWatchlistMeta = watchlistIndex >= 0 ? watchlists[watchlistIndex] : null;
 
   const addRecent = useCallback((label: string) => {
-    setRecents((prev) => [label, ...prev.filter((l) => l !== label)].slice(0, 3));
+    setRecents((prev) => [label, ...prev.filter((l) => l !== label)].slice(0, RECENTS_MAX_COUNT));
   }, []);
 
   return (
@@ -574,69 +464,6 @@ export default function Home() {
                   ['--card-active' as string]: cardActiveColor,
                 }}
               >
-              {false && recents.length > 0 ? (
-                <section key="recents">
-                  <h2
-                    className="mb-3 text-[15px] font-semibold text-[#F2F2F7]"
-                    style={{ fontFamily: 'var(--font-inter)' }}
-                  >
-                    Recents
-                  </h2>
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    {recents.map((label) => {
-                      const wl = watchlists.find((w) => w.label === label);
-                      const idx = watchlists.findIndex((w) => w.label === label);
-                      const tickerCount = idx >= 0 ? (watchlistStocks[idx]?.length ?? 0) : 0;
-                      if (!wl) return null;
-                      return (
-                        <div
-                          key={label}
-                          role="button"
-                          tabIndex={0}
-                          className="card-hoverable flex min-h-[140px] cursor-pointer flex-col rounded-[12px] border p-4 shadow-sm"
-                          style={{
-                            borderColor: watchlistBorderColor,
-                            backgroundColor: watchlistBgColor,
-                          }}
-                          onClick={() => {
-                            addRecent(label);
-                            setOpenView('watchlists');
-                            setSelectedWatchlist(label);
-                            setSelectedWatchlistSource('user');
-                          }}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' || e.key === ' ') {
-                              e.preventDefault();
-                              addRecent(label);
-                              setOpenView('watchlists');
-                              setSelectedWatchlist(label);
-                              setSelectedWatchlistSource('user');
-                            }
-                          }}
-                        >
-                          <div className="flex flex-col">
-                            <span className="mb-2 flex shrink-0" style={{ color: wl.color }}>
-                              <Icon name="bookmark" className="h-5 w-5" />
-                            </span>
-                            <h3
-                              className="text-[13px] font-semibold text-[#F2F2F7]"
-                              style={{ fontFamily: 'var(--font-inter)' }}
-                            >
-                              {wl.label}
-                            </h3>
-                          </div>
-                          <p
-                            className="mt-auto pt-2 text-[12px] text-white/70"
-                            style={{ fontFamily: 'var(--font-inter)' }}
-                          >
-                            Tickers: {tickerCount}
-                          </p>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </section>
-              ) : null}
               {cardGroups.map((group) => (
                 <section key={group.id}>
                   <div className="mb-3 flex items-center justify-between gap-2">
@@ -999,6 +826,10 @@ export default function Home() {
                         onToolbarHighlightChange={setToolbarHighlight}
                         toolbarHighlightHeight={toolbarHighlightHeight}
                         onToolbarHighlightHeightChange={setToolbarHighlightHeight}
+                        toolbarAccentOpacity={toolbarAccentOpacity}
+                        onToolbarAccentOpacityChange={setToolbarAccentOpacity}
+                        toolbarAccentGradientStop={toolbarAccentGradientStop}
+                        onToolbarAccentGradientStopChange={setToolbarAccentGradientStop}
                         toolbarShadowStrength={toolbarShadowStrength}
                         onToolbarShadowStrengthChange={setToolbarShadowStrength}
                         toolbarBorderWidth={toolbarBorderWidth}
@@ -1066,25 +897,27 @@ export default function Home() {
               >
                 <Icon name="grip" className="h-4 w-4" />
               </div>
-              <GlassIconButton
-                backgroundColor={barBgColor}
-                borderColor={barBorderColor}
-                opacity={toolbarOpacity}
-                blur={toolbarBlur}
-                borderBrightness={toolbarBorderBrightness}
-                borderWidth={toolbarBorderWidth}
-                borderGradientContrast={toolbarBorderGradientContrast}
-                highlightOpacity={toolbarHighlight}
-                highlightHeight={toolbarHighlightHeight}
-                shadowStrength={toolbarShadowStrength}
-                size={34}
-                ariaLabel="返回 Watchlist"
-                onClick={() => setSelectedStockForChart(null)}
-              >
-                <span className="flex items-center justify-center p-[5px]">
-                  <Icon name="back" className="h-5 w-5" strokeWidth={1.33} />
-                </span>
-              </GlassIconButton>
+              {selectedStockForChart ? (
+                <GlassIconButton
+                  backgroundColor={barBgColor}
+                  borderColor={barBorderColor}
+                  opacity={toolbarOpacity}
+                  blur={toolbarBlur}
+                  borderBrightness={toolbarBorderBrightness}
+                  borderWidth={toolbarBorderWidth}
+                  borderGradientContrast={toolbarBorderGradientContrast}
+                  highlightOpacity={toolbarHighlight}
+                  highlightHeight={toolbarHighlightHeight}
+                  shadowStrength={toolbarShadowStrength}
+                  size={34}
+                  ariaLabel="返回 Watchlist"
+                  onClick={() => setSelectedStockForChart(null)}
+                >
+                  <span className="flex items-center justify-center p-[5px]">
+                    <Icon name="back" className="h-5 w-5" strokeWidth={1.33} />
+                  </span>
+                </GlassIconButton>
+              ) : null}
               <GlassBar
                 backgroundColor={barBgColor}
                 borderColor={barBorderColor}
@@ -1096,6 +929,9 @@ export default function Home() {
                 highlightOpacity={toolbarHighlight}
                 highlightHeight={toolbarHighlightHeight}
                 shadowStrength={toolbarShadowStrength}
+                accentColor={currentWatchlistMeta?.color}
+                accentOpacity={toolbarAccentOpacity}
+                accentGradientStop={toolbarAccentGradientStop}
                 role="toolbar"
                 ariaLabel="View 切换"
               >
@@ -1136,9 +972,9 @@ export default function Home() {
                           <Image
                             src={selectedStockForChart.logo}
                             alt={selectedStockForChart.code}
-                            width={18}
-                            height={18}
-                            className="h-[18px] w-[18px] shrink-0 rounded-full object-contain"
+                            width={22}
+                            height={22}
+                            className="h-[22px] w-[22px] shrink-0 rounded-full object-contain"
                           />
                           <span className="font-semibold text-white">
                             {selectedStockForChart.code}
@@ -1156,7 +992,7 @@ export default function Home() {
                             />
                           </span>
                           <span className="truncate text-[13px]">
-                            {selectedWatchlist ?? 'med'}
+                            {selectedWatchlist ?? DEFAULT_WATCHLIST_LABEL}
                           </span>
                         </>
                       )}
@@ -1230,6 +1066,27 @@ export default function Home() {
                     className="h-5 w-5 shrink-0 transition-[color] duration-200"
                     strokeWidth={1.33}
                   />
+                </span>
+              </GlassIconButton>
+              <GlassIconButton
+                backgroundColor={barBgColor}
+                borderColor={barBorderColor}
+                opacity={toolbarOpacity}
+                blur={toolbarBlur}
+                borderBrightness={toolbarBorderBrightness}
+                borderWidth={toolbarBorderWidth}
+                borderGradientContrast={toolbarBorderGradientContrast}
+                highlightOpacity={toolbarHighlight}
+                highlightHeight={toolbarHighlightHeight}
+                shadowStrength={toolbarShadowStrength}
+                size={34}
+                ariaLabel="搜索"
+                onClick={() => {
+                  // TODO: 搜索功能
+                }}
+              >
+                <span className="flex items-center justify-center p-[5px]">
+                  <Icon name="search" className="h-5 w-5 shrink-0" strokeWidth={1.5} />
                 </span>
               </GlassIconButton>
             </div>
@@ -1344,7 +1201,6 @@ export default function Home() {
                 onClick={(e) => {
                   e.stopPropagation();
                   setCardPopover(null);
-                  // TODO: edit
                 }}
               >
                 <Icon name="edit" className="h-4 w-4 shrink-0 text-[#F2F2F7]" />
@@ -1358,7 +1214,6 @@ export default function Home() {
                 onClick={(e) => {
                   e.stopPropagation();
                   setCardPopover(null);
-                  // TODO: add new tickers
                 }}
               >
                 <Icon name="plus" className="h-4 w-4 shrink-0 text-[#F2F2F7]" />
@@ -1372,7 +1227,6 @@ export default function Home() {
                 onClick={(e) => {
                   e.stopPropagation();
                   setCardPopover(null);
-                  // TODO: duplicate
                 }}
               >
                 <Icon name="duplicate" className="h-4 w-4 shrink-0 text-[#F2F2F7]" />
@@ -1386,7 +1240,6 @@ export default function Home() {
                 onClick={(e) => {
                   e.stopPropagation();
                   setCardPopover(null);
-                  // TODO: alert off
                 }}
               >
                 <Icon name="bell-minus" className="h-4 w-4 shrink-0 text-[#F2F2F7]" />
@@ -1400,7 +1253,6 @@ export default function Home() {
                 onClick={(e) => {
                   e.stopPropagation();
                   setCardPopover(null);
-                  // TODO: delete
                 }}
               >
                 <Icon name="trash" className="h-4 w-4 shrink-0 text-[#FF453A]" />

@@ -1,3 +1,5 @@
+import { Search } from 'lucide-react';
+
 type IconProps = { name: string; className?: string; strokeWidth?: number };
 
 export function Icon({ name, className, strokeWidth }: IconProps) {
@@ -5,11 +7,7 @@ export function Icon({ name, className, strokeWidth }: IconProps) {
   const sw = strokeWidth ?? 1.5;
   switch (name) {
     case "search":
-      return (
-        <svg className={c} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={sw} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-        </svg>
-      );
+      return <Search className={c} strokeWidth={sw} />;
     case "screener":
       return (
         <svg className={c} fill="none" stroke="currentColor" viewBox="0 0 24 24">
