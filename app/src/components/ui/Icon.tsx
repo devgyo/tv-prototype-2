@@ -307,6 +307,18 @@ export function Icon({ name, className, strokeWidth }: IconProps) {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={sw} d="M18 12H9" />
         </svg>
       );
+    case "pin-top":
+      return (
+        <svg className={c} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={sw} d="M4 4h16M12 20V8M9 11l3-3 3 3" />
+        </svg>
+      );
+    case "pin-bottom":
+      return (
+        <svg className={c} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={sw} d="M4 20h16M12 4v12M9 13l3 3 3-3" />
+        </svg>
+      );
     default:
       return <span className={c} />;
   }

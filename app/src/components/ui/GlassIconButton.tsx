@@ -55,7 +55,7 @@ export function GlassIconButton({
 
   const [hovered, setHovered] = useState(false);
   const [pressed, setPressed] = useState(false);
-  const scale = pressed ? 0.88 : hovered ? 0.93 : 1;
+  const scale = pressed ? 0.88 : hovered ? 0.95 : 1;
 
   return (
     <div

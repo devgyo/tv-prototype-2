@@ -32,6 +32,8 @@ type EventPanelProps = {
   onToolbarAccentOpacityChange?: (value: number) => void;
   toolbarAccentGradientStop?: number;
   onToolbarAccentGradientStopChange?: (value: number) => void;
+  accentHighlightVisible?: boolean;
+  onAccentHighlightVisibleChange?: (value: boolean) => void;
   toolbarShadowStrength?: number;
   onToolbarShadowStrengthChange?: (value: number) => void;
   toolbarBorderWidth?: number;
@@ -60,6 +62,8 @@ export function EventPanel({
   onToolbarAccentOpacityChange,
   toolbarAccentGradientStop,
   onToolbarAccentGradientStopChange,
+  accentHighlightVisible = true,
+  onAccentHighlightVisibleChange,
   toolbarShadowStrength,
   onToolbarShadowStrengthChange,
   toolbarBorderWidth,
@@ -323,6 +327,28 @@ export function EventPanel({
             <span className="w-10 text-right text-[11px] text-white/60">
               {((toolbarAccentGradientStop ?? 0.6) * 100).toFixed(0)}%
             </span>
+          </div>
+        ) : null}
+        {onAccentHighlightVisibleChange ? (
+          <div className="flex items-center justify-between gap-2 px-1">
+            <span
+              className="shrink-0 text-[12px] text-white/60"
+              style={{ fontFamily: VIEW_PANEL_TITLE_FONT }}
+            >
+              显示彩色高光
+            </span>
+            <button
+              type="button"
+              onClick={() => onAccentHighlightVisibleChange?.(!accentHighlightVisible)}
+              className={`rounded-lg px-2.5 py-1 text-[12px] font-medium outline-none transition-colors ${
+                accentHighlightVisible
+                  ? 'bg-white/15 text-[#F2F2F7] hover:bg-white/20'
+                  : 'bg-white/5 text-white/50 hover:bg-white/10 hover:text-white/70'
+              }`}
+              style={{ fontFamily: VIEW_PANEL_TITLE_FONT }}
+            >
+              {accentHighlightVisible ? '开' : '关'}
+            </button>
           </div>
         ) : null}
         <div className="px-1 pt-2">
