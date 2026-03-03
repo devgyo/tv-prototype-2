@@ -18,12 +18,12 @@ type EventPanelProps = {
   width?: number | 'fill';
   toolbarBgColor?: string;
   onToolbarBgColorChange?: (value: string) => void;
+  toolbarBorderColor?: string;
+  onToolbarBorderColorChange?: (value: string) => void;
   toolbarOpacity?: number;
   toolbarBlur?: number;
   onToolbarOpacityChange?: (value: number) => void;
   onToolbarBlurChange?: (value: number) => void;
-  toolbarBorderBrightness?: number;
-  onToolbarBorderBrightnessChange?: (value: number) => void;
   toolbarHighlight?: number;
   onToolbarHighlightChange?: (value: number) => void;
   toolbarHighlightHeight?: number;
@@ -38,8 +38,6 @@ type EventPanelProps = {
   onToolbarShadowStrengthChange?: (value: number) => void;
   toolbarBorderWidth?: number;
   onToolbarBorderWidthChange?: (value: number) => void;
-  toolbarBorderGradientContrast?: number;
-  onToolbarBorderGradientContrastChange?: (value: number) => void;
 };
 
 export function EventPanel({
@@ -48,12 +46,12 @@ export function EventPanel({
   width = undefined,
   toolbarBgColor,
   onToolbarBgColorChange,
+  toolbarBorderColor,
+  onToolbarBorderColorChange,
   toolbarOpacity,
   toolbarBlur,
   onToolbarOpacityChange,
   onToolbarBlurChange,
-  toolbarBorderBrightness,
-  onToolbarBorderBrightnessChange,
   toolbarHighlight,
   onToolbarHighlightChange,
   toolbarHighlightHeight,
@@ -68,8 +66,6 @@ export function EventPanel({
   onToolbarShadowStrengthChange,
   toolbarBorderWidth,
   onToolbarBorderWidthChange,
-  toolbarBorderGradientContrast,
-  onToolbarBorderGradientContrastChange,
 }: EventPanelProps) {
   const panelStyle = getViewPanelStyle({
     borderColor: borderColor ?? WATCHLIST_BORDER,
@@ -165,26 +161,20 @@ export function EventPanel({
             边框
           </span>
         </div>
-        {onToolbarBorderBrightnessChange ? (
+        {onToolbarBorderColorChange ? (
           <div className="flex items-center gap-2 px-1">
             <span
               className="shrink-0 text-[12px] text-white/60"
               style={{ fontFamily: VIEW_PANEL_TITLE_FONT }}
             >
-              Bar 边框亮度
+              Bar 边框颜色
             </span>
             <input
-              type="range"
-              min={-0.6}
-              max={0.6}
-              step={0.05}
-              value={toolbarBorderBrightness ?? 0}
-              onChange={(e) => onToolbarBorderBrightnessChange?.(parseFloat(e.target.value))}
-              className="h-1 flex-1 cursor-pointer accent-[#F2F2F7]"
+              type="color"
+              value={toolbarBorderColor ?? '#404040'}
+              onChange={(e) => onToolbarBorderColorChange?.(e.target.value)}
+              className="h-7 w-10 cursor-pointer rounded border-0 bg-transparent p-0"
             />
-            <span className="w-14 text-right text-[11px] text-white/60">
-              {(toolbarBorderBrightness ?? 0).toFixed(2)}
-            </span>
           </div>
         ) : null}
         {onToolbarBorderWidthChange ? (
@@ -206,30 +196,6 @@ export function EventPanel({
             />
             <span className="w-12 text-right text-[11px] text-white/60">
               {(toolbarBorderWidth ?? 1).toFixed(1)}px
-            </span>
-          </div>
-        ) : null}
-        {onToolbarBorderGradientContrastChange ? (
-          <div className="flex items-center gap-2 px-1">
-            <span
-              className="shrink-0 text-[12px] text-white/60"
-              style={{ fontFamily: VIEW_PANEL_TITLE_FONT }}
-            >
-              渐变对比度
-            </span>
-            <input
-              type="range"
-              min={0}
-              max={2}
-              step={0.1}
-              value={toolbarBorderGradientContrast ?? 1}
-              onChange={(e) =>
-                onToolbarBorderGradientContrastChange?.(parseFloat(e.target.value))
-              }
-              className="h-1 flex-1 cursor-pointer accent-[#F2F2F7]"
-            />
-            <span className="w-12 text-right text-[11px] text-white/60">
-              {(toolbarBorderGradientContrast ?? 1).toFixed(2)}
             </span>
           </div>
         ) : null}
@@ -382,11 +348,10 @@ export function EventPanel({
           </div>
         ) : null}
         {(toolbarBgColor ??
+          toolbarBorderColor ??
           toolbarOpacity ??
           toolbarBlur ??
-          toolbarBorderBrightness ??
           toolbarBorderWidth ??
-          toolbarBorderGradientContrast ??
           toolbarHighlight ??
           toolbarHighlightHeight ??
           toolbarAccentOpacity ??
@@ -401,16 +366,11 @@ export function EventPanel({
             </span>
             <div className="mt-1 space-y-[2px] text-[10px] text-white/45">
               {toolbarBgColor != null && <div>bgColor: {toolbarBgColor}</div>}
+              {toolbarBorderColor != null && <div>borderColor: {toolbarBorderColor}</div>}
               {toolbarOpacity != null && <div>opacity: {toolbarOpacity.toFixed(2)}</div>}
               {toolbarBlur != null && <div>blur: {toolbarBlur.toFixed(1)}px</div>}
-              {toolbarBorderBrightness != null && (
-                <div>borderBrightness: {toolbarBorderBrightness.toFixed(2)}</div>
-              )}
               {toolbarBorderWidth != null && (
                 <div>borderWidth: {toolbarBorderWidth.toFixed(2)}px</div>
-              )}
-              {toolbarBorderGradientContrast != null && (
-                <div>borderGradientContrast: {toolbarBorderGradientContrast.toFixed(2)}</div>
               )}
               {toolbarHighlight != null && (
                 <div>highlight: {toolbarHighlight.toFixed(2)}</div>

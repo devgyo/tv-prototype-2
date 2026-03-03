@@ -6,32 +6,30 @@ const STORAGE_KEY = 'pitch-toolbar-style';
 
 type ToolbarStylePayload = Partial<{
   barBgColor: string;
+  barBorderColor: string;
   toolbarOpacity: number;
   toolbarBlur: number;
-  toolbarBorderBrightness: number;
   toolbarHighlight: number;
   toolbarHighlightHeight: number;
   toolbarAccentOpacity: number;
   toolbarAccentGradientStop: number;
   toolbarShadowStrength: number;
   toolbarBorderWidth: number;
-  toolbarBorderGradientContrast: number;
 }>;
 
 export function useToolbarStylePersistence(
   payload: ToolbarStylePayload,
   setters: {
     setBarBgColor: (v: string) => void;
+    setBarBorderColor: (v: string) => void;
     setToolbarOpacity: (v: number) => void;
     setToolbarBlur: (v: number) => void;
-    setToolbarBorderBrightness: (v: number) => void;
     setToolbarHighlight: (v: number) => void;
     setToolbarHighlightHeight: (v: number) => void;
     setToolbarAccentOpacity: (v: number) => void;
     setToolbarAccentGradientStop: (v: number) => void;
     setToolbarShadowStrength: (v: number) => void;
     setToolbarBorderWidth: (v: number) => void;
-    setToolbarBorderGradientContrast: (v: number) => void;
   }
 ) {
   useEffect(() => {
@@ -41,11 +39,9 @@ export function useToolbarStylePersistence(
       if (!stored) return;
       const parsed = JSON.parse(stored) as ToolbarStylePayload;
       if (parsed.barBgColor) setters.setBarBgColor(parsed.barBgColor);
+      if (parsed.barBorderColor) setters.setBarBorderColor(parsed.barBorderColor);
       if (typeof parsed.toolbarOpacity === 'number') setters.setToolbarOpacity(parsed.toolbarOpacity);
       if (typeof parsed.toolbarBlur === 'number') setters.setToolbarBlur(parsed.toolbarBlur);
-      if (typeof parsed.toolbarBorderBrightness === 'number') {
-        setters.setToolbarBorderBrightness(parsed.toolbarBorderBrightness);
-      }
       if (typeof parsed.toolbarHighlight === 'number') setters.setToolbarHighlight(parsed.toolbarHighlight);
       if (typeof parsed.toolbarHighlightHeight === 'number') {
         setters.setToolbarHighlightHeight(parsed.toolbarHighlightHeight);
@@ -62,9 +58,6 @@ export function useToolbarStylePersistence(
       if (typeof parsed.toolbarBorderWidth === 'number') {
         setters.setToolbarBorderWidth(parsed.toolbarBorderWidth);
       }
-      if (typeof parsed.toolbarBorderGradientContrast === 'number') {
-        setters.setToolbarBorderGradientContrast(parsed.toolbarBorderGradientContrast);
-      }
     } catch {
       // ignore parse errors
     }
@@ -79,16 +72,15 @@ export function useToolbarStylePersistence(
     }
   }, [
     payload.barBgColor,
+    payload.barBorderColor,
     payload.toolbarOpacity,
     payload.toolbarBlur,
-    payload.toolbarBorderBrightness,
     payload.toolbarHighlight,
     payload.toolbarHighlightHeight,
     payload.toolbarAccentOpacity,
     payload.toolbarAccentGradientStop,
     payload.toolbarShadowStrength,
     payload.toolbarBorderWidth,
-    payload.toolbarBorderGradientContrast,
   ]);
 }
 
